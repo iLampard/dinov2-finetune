@@ -49,12 +49,12 @@ class VTABDataset(BaseDataset):
             raise FileNotFoundError(f"Data file not found: {self.data_dir}")
 
         task_dir = self.root_dir / self.task
-        
+
         with self.data_dir.open('r') as f:
             lines = f.read().splitlines()
-        
+
         samples, labels = zip(*(line.split(maxsplit=1) for line in lines))
-        
+
         return (
             np.array([task_dir / sample for sample in samples]),
             np.array(labels, dtype=int)
@@ -74,8 +74,12 @@ class VTABDataset(BaseDataset):
 
         if self.transform:
             image = self.transform(image)
-            
-        return image, int(label)  # Ensure label is an integer
+
+        # Ensure image is a torch.Tensor
+        if not isinstance(image, torch.Tensor):
+            image = ToTensor()(image)
+
+        return image, int(label)
 
 
 def make_transform(image_processor):
@@ -107,40 +111,6 @@ def make_transform(image_processor):
     )
 
     return dict(train_transform=train_transform, eval_transform=eval_transform)
-
-
-def create_dataset(name, *args, **kwargs):
-    dataset_class = registry.get(name)
-    if dataset_class is None:
-        raise ValueError(f"Unknown dataset: {name}")
-    return dataset_class(*args, **kwargs)
-
-
-def get_vtab_dataloader(
-        data_dir: str,
-        task: str,
-        stage: str,
-        batch_size: int,
-        image_processor,
-        num_workers: int = 1,
-        shuffle: bool = True
-) -> DataLoader:
-    transform = make_transform(image_processor)
-    dataset = VTABDataset(
-        root_dir=data_dir,
-        task=task,
-        stage=stage,
-        transform=transform[f'{stage}_transform']
-    )
-
-    return DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=shuffle,
-        num_workers=num_workers,
-        collate_fn=collate_fn
-    )
-
 
 def collate_fn(examples: List[Tuple[torch.Tensor, int]]) -> Dict[str, torch.Tensor]:
     pixel_values = torch.stack([example[0] for example in examples])

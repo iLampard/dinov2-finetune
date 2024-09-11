@@ -2,8 +2,7 @@ import os
 from pathlib import Path
 
 import sys
-from pathlib import Path
-
+import torch  # Add this import
 import numpy as np
 
 # Add the project root directory to sys.path
@@ -13,6 +12,26 @@ sys.path.append(str(project_root))
 from dataset.base_dataset import BaseDataset
 # Add these imports for the test function
 import matplotlib.pyplot as plt
+
+
+def save_images(images, labels, output_dir):
+    output_dir = Path(output_dir)
+    output_dir.mkdir(exist_ok=True)
+    for i, (img, label) in enumerate(zip(images, labels)):
+        try:
+            if isinstance(img, torch.Tensor):
+                img_np = img.numpy().transpose(1, 2, 0)
+            elif isinstance(img, np.ndarray):
+                img_np = img.transpose(1, 2, 0) if img.shape[0] == 3 else img
+            else:
+                print(f"Unexpected image type: {type(img)}")
+                continue
+
+            img_np = np.clip(img_np * 255, 0, 255).astype(np.uint8)
+            plt.imsave(output_dir / f"image_{i}_label_{label}.png", img_np)
+            print(f"Successfully saved image {i}")
+        except Exception as e:
+            print(f"Error saving image {i}: {str(e)}")
 
 
 # Add this at the end of the file
@@ -40,18 +59,9 @@ def test_vtab_dataset():
     items = ds_vtab[0:5]
     print(f"Slice - Number of items: {len(items)}")
 
-    # Visualize a few images
-    fig, axes = plt.subplots(1, 5, figsize=(15, 3))
-    for i, (img, label) in enumerate(items):
-        # Convert tensor to numpy array and ensure it's in the correct range
-        img_np = img.numpy().transpose(1, 2, 0)
-        img_np = np.clip(img_np, 0, 1)  # Ensure values are between 0 and 1
-
-        axes[i].imshow(img_np)
-        axes[i].set_title(f"Label: {label}")
-        axes[i].axis('off')
-    plt.tight_layout()
-    plt.show()
+    # Display images
+    images, labels = zip(*items)
+    save_images(images, labels, "output_images")
 
     # Test with DataLoader
     # dataloader = DataLoader(ds_vtab, batch_size=32, shuffle=True)
