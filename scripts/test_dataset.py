@@ -9,9 +9,10 @@ import numpy as np
 project_root = Path(__file__).resolve().parent.parent
 sys.path.append(str(project_root))
 
-from dataset.base_dataset import BaseDataset
+from utils.dataset_utils import create_dataset, create_dataloader
 # Add these imports for the test function
 import matplotlib.pyplot as plt
+from transformers import AutoImageProcessor
 
 
 def save_images(images, labels, output_dir):
@@ -40,13 +41,15 @@ def test_vtab_dataset():
     # Expand the ~ in the path and convert to absolute path
     data_dir = Path(os.path.expanduser("~/Downloads/vtab-1k/caltech101/train800.txt")).resolve()
 
+    image_processor = AutoImageProcessor.from_pretrained(
+        '/Users/siqiao/Documents/workarea/github/dinov2-finetune/dinov2-base')
+
     print(f"Looking for data file at: {data_dir}")  # Add this line for debugging
 
     if not data_dir.exists():
         raise FileNotFoundError(f"Data file not found: {data_dir}")
 
-    ds_cls = BaseDataset.by_name('vtab')
-    ds_vtab = ds_cls(data_dir)
+    ds_vtab = create_dataset(image_processor, 'vtab', data_dir=data_dir, split='train')
 
     # Test __len__
     print(f"Dataset size: {len(ds_vtab)}")
@@ -64,9 +67,9 @@ def test_vtab_dataset():
     save_images(images, labels, "output_images")
 
     # Test with DataLoader
-    # dataloader = DataLoader(ds_vtab, batch_size=32, shuffle=True)
-    # batch = next(iter(dataloader))
-    # print(f"Batch - Images shape: {batch[0].shape}, Labels shape: {batch[1].shape}")
+    dataloader = create_dataloader(ds_vtab, batch_size=4, shuffle=True)
+    batch = next(iter(dataloader))
+    print(f"Batch - Images shape: {batch[0].shape}, Labels shape: {batch[1].shape}")
 
 
 if __name__ == "__main__":

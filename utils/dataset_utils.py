@@ -1,36 +1,63 @@
 from typing import Dict, Any, Optional
 from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms
-from pathlib import Path
-import os
+from transformers import AutoImageProcessor
+from torchvision.transforms import (
+    CenterCrop, Compose, Normalize, RandomHorizontalFlip,
+    RandomResizedCrop, Resize, ToTensor
+)
 
-from dataset.base_dataset import BaseDataset
+
+def create_transform(image_processor, is_train: bool):
+    normalize = Normalize(mean=image_processor.image_mean, std=image_processor.image_std)
+
+    if "height" in image_processor.size:
+        size = (image_processor.size["height"], image_processor.size["width"])
+        crop_size = size
+    elif "shortest_edge" in image_processor.size:
+        size = image_processor.size["shortest_edge"]
+        crop_size = (size, size)
+
+    if is_train:
+        transform = Compose(
+            [
+                RandomResizedCrop(crop_size),
+                RandomHorizontalFlip(),
+                ToTensor(),
+                normalize,
+            ]
+            )
+    else:
+        transform = Compose(
+            [
+            Resize(size),
+            CenterCrop(crop_size),
+            ToTensor(),
+            normalize,
+        ]
+    )
+
+    return transform
 
 def create_dataset(
-    dataset_type: str,
+    image_processor: AutoImageProcessor,
+    dataset_name: str,
     data_dir: str,
     split: str,
-    transform_config: Optional[Dict[str, Any]] = None,
     **kwargs
 ) -> Dataset:
     """
     Create a dataset based on the provided configuration.
     """
-    data_dir = Path(os.path.expanduser(data_dir)).resolve()
     
-    if not data_dir.exists():
-        raise FileNotFoundError(f"Data directory not found: {data_dir}")
+    # Import here to avoid circular imports
+    from dataset.base_dataset import BaseDataset
+    dataset_cls = BaseDataset.by_name(dataset_name)
     
-    dataset_cls = BaseDataset.by_name(dataset_type)
+    transform = create_transform(image_processor, is_train=split=="train")
     
-    if transform_config:
-        transform = create_transform(transform_config)
-    else:
-        transform = None
     
     return dataset_cls(
         data_dir=data_dir,
-        split=split,
         transform=transform,
         **kwargs
     )

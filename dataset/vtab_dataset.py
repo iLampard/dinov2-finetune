@@ -2,12 +2,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 from typing import Union, List, Tuple, Dict
-from torchvision.transforms import (
-    CenterCrop, Compose, Normalize, RandomHorizontalFlip,
-    RandomResizedCrop, Resize, ToTensor,
-)
+from torchvision.transforms import ToTensor
 import torch
-from torch.utils.data import DataLoader
 
 from dataset.base_dataset import BaseDataset
 
@@ -81,36 +77,6 @@ class VTABDataset(BaseDataset):
 
         return image, int(label)
 
-
-def make_transform(image_processor):
-    normalize = Normalize(mean=image_processor.image_mean, std=image_processor.image_std)
-
-    if "height" in image_processor.size:
-        size = (image_processor.size["height"], image_processor.size["width"])
-        crop_size = size
-    elif "shortest_edge" in image_processor.size:
-        size = image_processor.size["shortest_edge"]
-        crop_size = (size, size)
-
-    # crop_size = (image_processor.crop_size["height"], image_processor.crop_size["width"])
-    train_transform = Compose(
-        [
-            RandomResizedCrop(crop_size),
-            RandomHorizontalFlip(),
-            ToTensor(),
-            normalize,
-        ]
-    )
-    eval_transform = Compose(
-        [
-            Resize(size),
-            CenterCrop(crop_size),
-            ToTensor(),
-            normalize,
-        ]
-    )
-
-    return dict(train_transform=train_transform, eval_transform=eval_transform)
 
 def collate_fn(examples: List[Tuple[torch.Tensor, int]]) -> Dict[str, torch.Tensor]:
     pixel_values = torch.stack([example[0] for example in examples])
