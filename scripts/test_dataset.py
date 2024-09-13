@@ -13,7 +13,7 @@ from utils.dataset_utils import create_dataset, create_dataloader
 # Add these imports for the test function
 import matplotlib.pyplot as plt
 from transformers import AutoImageProcessor
-
+from dataset.vtab_dataset import collate_fn
 
 def save_images(images, labels, output_dir):
     output_dir = Path(output_dir)
@@ -67,9 +67,9 @@ def test_vtab_dataset():
     save_images(images, labels, "output_images")
 
     # Test with DataLoader
-    dataloader = create_dataloader(ds_vtab, batch_size=4, shuffle=True)
+    dataloader = create_dataloader(ds_vtab, batch_size=4, shuffle=True, collate_fn=collate_fn)
     batch = next(iter(dataloader))
-    print(f"Batch - Images shape: {batch[0].shape}, Labels shape: {batch[1].shape}")
+    print(f"Batch - Images shape: {batch['pixel_values'][0].shape}, Labels shape: {batch['labels'].shape}")
 
 
 if __name__ == "__main__":
