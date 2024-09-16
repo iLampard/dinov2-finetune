@@ -8,23 +8,24 @@ from pathlib import Path
 
 @dataclass
 class ModelArguments:
-    model_name_or_path: str = field(default='./dinov2-base')
+    model_name_or_path: str = field(default='/content/dinov2-finetune/dinov2-base')
 
 
 @dataclass
 class DataArguments:
-    task: Optional[str] = field(default='caltech101')
+    dataset_name: Optional[str] = field(default='vtab')
+    subset_name: Optional[str] = field(default='caltech101')
 
     train_data_dir: Union[str, Path] = field(
-        default='~/Downloads/vtab-1k/caltech101/train800.txt',
+        default='/content/dinov2-finetune/data/vtab-1k/caltech101/train800.txt',
         metadata={"help": "Path to the training data."}
     )
     eval_data_dir: Union[str, Path] = field(
-        default='~/Downloads/vtab-1k/caltech101/val200.txt',
+        default='/content/dinov2-finetune/data/vtab-1k/caltech101/val200.txt',
         metadata={"help": "Path to the evaluation data."}
     )
     test_data_dir: Union[str, Path] = field(
-        default='~/Downloads/vtab-1k/caltech101/test.txt',
+        default='/content/dinov2-finetune/data/vtab-1k/caltech101/test.txt',
         metadata={"help": "Path to the test data."}
     )
 
@@ -33,7 +34,7 @@ class DataArguments:
             raise ValueError(
                 "You must specify either a dataset name from the hub or a train and/or validation directory."
             )
-        
+
         # Convert string paths to Path objects
         self.train_data_dir = Path(self.train_data_dir).expanduser()
         self.eval_data_dir = Path(self.eval_data_dir).expanduser()

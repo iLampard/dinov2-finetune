@@ -1,3 +1,13 @@
-torchvision
-transformers
-torch
+torch>=1.13.0
+torchvision>=0.14.0
+transformers>=4.25.0
+datasets
+accelerate>=0.16.0
+peft>=0.2.0
+bitsandbytes
+deepspeed>=0.8.0
+scikit-learn>=1.0.0
+numpy>=1.21.0
+Pillow>=9.0.0
+tqdm>=4.64.0
+registrable

@@ -42,7 +42,7 @@ def test_vtab_dataset():
     data_dir = Path(os.path.expanduser("~/Downloads/vtab-1k/caltech101/train800.txt")).resolve()
 
     image_processor = AutoImageProcessor.from_pretrained(
-        '/Users/siqiao/Documents/workarea/github/dinov2-finetune/dinov2-base')
+        '~/Downloads/dinov2-finetune/dinov2-base')
 
     print(f"Looking for data file at: {data_dir}")  # Add this line for debugging
 

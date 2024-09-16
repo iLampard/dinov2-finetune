@@ -14,8 +14,13 @@ from dataset.vtab_dataset import VTAB_NUM_CLASSES, collate_fn
 
 
 
-def maybe_zero_3(param):
+def maybe_zero_3(param, ignore_status=False, name=None):
+    from deepspeed import zero
+    from deepspeed.runtime.zero.partition_parameters import ZeroParamStatus
     if hasattr(param, "ds_id"):
+        if param.ds_status == ZeroParamStatus.NOT_AVAILABLE:
+            if not ignore_status:
+                logging.warning(f"{name}: param.ds_status != ZeroParamStatus.NOT_AVAILABLE: {param.ds_status}")
         with zero.GatheredParameters([param]):
             param = param.data.detach().cpu().clone()
     else:
@@ -108,12 +113,12 @@ def build_dataset(processor, data_args):
 
 
 def build_model(model_args, training_args, data_args, lora_args, checkpoint_dir):
-    if not lora_args.use_lora: assert training_args.bits in [16, 32]
+    if not training_args.use_lora: assert training_args.bits in [16, 32]
     compute_dtype = (torch.bfloat16 if training_args.bf16 else torch.float32)
 
     # llm quantization config (for q-lora)
     bnb_config = None
-    if lora_args.use_lora and lora_args.q_lora:
+    if training_args.use_lora and lora_args.q_lora:
         from transformers import BitsAndBytesConfig
         logger.info("Quantization for LLM enabled...")
         bnb_config = BitsAndBytesConfig(
@@ -138,7 +143,7 @@ def build_model(model_args, training_args, data_args, lora_args, checkpoint_dir)
         torch_dtype=compute_dtype,
         device_map=device_map,
         trust_remote_code=True,
-        num_labels=VTAB_NUM_CLASSES[data_args.task]
+        num_labels=VTAB_NUM_CLASSES[data_args.subset_name]
     )
 
     logging.info("Model loaded successfully")
@@ -151,10 +156,10 @@ def build_model(model_args, training_args, data_args, lora_args, checkpoint_dir)
     setattr(model, 'model_parallel', True)
     setattr(model, 'is_parallelizable', True)
 
-    if lora_args.use_lora and training_args.bits < 16:
+    if training_args.use_lora and training_args.bits < 16:
         model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=training_args.gradient_checkpointing)
 
-    if lora_args.use_lora:
+    if training_args.use_lora:
         if checkpoint_dir is not None:
             logging.info(f"Loading adapters from {checkpoint_dir}.")
             # os.path.join(checkpoint_dir, 'adapter_model')
@@ -213,7 +218,7 @@ def train():
 
     processor = AutoImageProcessor.from_pretrained(model_args.model_name_or_path)
 
-    resume_from_checkpoint_dir = get_last_checkpoint(training_args.output_dir)
+    resume_from_checkpoint_dir = get_last_checkpoint(training_args.output_dir, training_args.checkpoint_prefix)
 
     model = build_model(model_args, training_args, data_args, lora_args, resume_from_checkpoint_dir)
 
@@ -260,7 +265,7 @@ def train():
     # Check this issue https://github.com/huggingface/peft/issues/746 for more information.
     if (
             list(Path(training_args.output_dir).glob("checkpoint-*"))
-            and not lora_args.use_lora
+            and not training_args.use_lora
     ):
         trainer.train(resume_from_checkpoint=True)
     else:
