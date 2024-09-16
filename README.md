@@ -5,7 +5,7 @@ This project demonstrates how to finetune Meta's DINOv2 model on various downstr
 
 ## About This Project
 
-This repository is an extension and adaptation of the work. It builds upon the original implementation to showcase finetuning DINOv2 on a broader range of downstream tasks, with a focus on datasets from the Visual Task Adaptation Benchmark (VTAB).
+This repository builds upon the original implementation to showcase finetuning DINOv2 on a broader range of downstream tasks, with a focus on datasets from the Visual Task Adaptation Benchmark (VTAB).
 
 ## Getting Started
 
