@@ -84,6 +84,11 @@ class TrainingArguments(transformers.TrainingArguments):
 
     use_lora: bool = False
 
+    use_wandb: bool = field(default=False, metadata={"help": "Whether to use Weights and Biases for logging"})
+    wandb_project: Optional[str] = field(default=None, metadata={"help": "The name of the W&B project to log to"})
+    wandb_entity: Optional[str] = field(default=None, metadata={"help": "The entity (team) of the W&B project"})
+    wandb_run_name: Optional[str] = field(default=None, metadata={"help": "The name of the W&B run"})
+
     def __post_init__(self):
         super().__post_init__()
         self.remove_unused_columns = False

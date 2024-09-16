@@ -4,10 +4,11 @@ import numpy as np
 from arguments import ModelArguments, DataArguments, TrainingArguments, LoraArguments
 import torch
 import os
-import logging
 from peft import LoraConfig, get_peft_model, PeftModel, prepare_model_for_kbit_training 
 import deepspeed
 from pathlib import Path
+import wandb
+from transformers.integrations import WandbCallback
 from utils.log_utils import default_logger as logger
 from utils.dataset_utils import create_dataset
 from dataset.vtab_dataset import VTAB_NUM_CLASSES, collate_fn
@@ -20,7 +21,7 @@ def maybe_zero_3(param, ignore_status=False, name=None):
     if hasattr(param, "ds_id"):
         if param.ds_status == ZeroParamStatus.NOT_AVAILABLE:
             if not ignore_status:
-                logging.warning(f"{name}: param.ds_status != ZeroParamStatus.NOT_AVAILABLE: {param.ds_status}")
+                logger.warning(f"{name}: param.ds_status != ZeroParamStatus.NOT_AVAILABLE: {param.ds_status}")
         with zero.GatheredParameters([param]):
             param = param.data.detach().cpu().clone()
     else:
@@ -146,13 +147,13 @@ def build_model(model_args, training_args, data_args, lora_args, checkpoint_dir)
         num_labels=VTAB_NUM_CLASSES[data_args.subset_name]
     )
 
-    logging.info("Model loaded successfully")
+    logger.info("Model loaded successfully")
 
     if compute_dtype == torch.float32 and training_args.bits == 4:
         if torch.cuda.is_bf16_supported():
-            logging.info('=' * 80)
-            logging.info('Your GPU supports bfloat16, you can accelerate training with the argument --bf16')
-            logging.info('=' * 80)
+            logger.info('=' * 80)
+            logger.info('Your GPU supports bfloat16, you can accelerate training with the argument --bf16')
+            logger.info('=' * 80)
     setattr(model, 'model_parallel', True)
     setattr(model, 'is_parallelizable', True)
 
@@ -161,11 +162,11 @@ def build_model(model_args, training_args, data_args, lora_args, checkpoint_dir)
 
     if training_args.use_lora:
         if checkpoint_dir is not None:
-            logging.info(f"Loading adapters from {checkpoint_dir}.")
+            logger.info(f"Loading adapters from {checkpoint_dir}.")
             # os.path.join(checkpoint_dir, 'adapter_model')
             model = PeftModel.from_pretrained(model, checkpoint_dir, is_trainable=True)
         else:
-            logging.info(f'Init LoRA modules...')
+            logger.info(f'Init LoRA modules...')
             peft_config = LoraConfig(
                 target_modules=lora_args.target_modules.split(','),
                 inference_mode=False,
@@ -213,6 +214,21 @@ def train():
     )
     model_args, data_args, training_args, lora_args = parser.parse_args_into_dataclasses()
 
+    if training_args.use_wandb:
+        wandb.init(
+            project=training_args.wandb_project,
+            entity=training_args.wandb_entity,
+            name=training_args.wandb_run_name,
+            config={
+                "model_name": model_args.model_name_or_path,
+                "dataset": data_args.dataset_name,
+                "learning_rate": training_args.learning_rate,
+                "batch_size": training_args.per_device_train_batch_size,
+                "num_epochs": training_args.num_train_epochs,
+                # Add any other hyperparameters you want to track
+            }
+        )
+
     if getattr(training_args, 'deepspeed', None) and getattr(lora_args, 'q_lora', False):
         training_args.distributed_state.distributed_type = "DEEPSPEED"
 
@@ -252,13 +268,18 @@ def train():
         accuracy = accuracy_score(y_pred=predictions, y_true=eval_pred.label_ids)
         return {"accuracy": accuracy}
 
+    callbacks = []
+    if training_args.use_wandb:
+        callbacks.append(WandbCallback())
+
     trainer = Trainer(model,
                       args=args,
                       train_dataset=train_eval_dataset['train_dataset'],
                       eval_dataset=train_eval_dataset['eval_dataset'],
                       tokenizer=processor,
                       compute_metrics=compute_metrics,
-                      data_collator=collate_fn)
+                      data_collator=collate_fn,
+                      callbacks=callbacks)
 
     # `not training_args.use_lora` is a temporary workaround for the issue that there are problems with
     # loading the checkpoint when using LoRA with DeepSpeed.
@@ -271,6 +292,9 @@ def train():
     else:
         trainer.train()
 
+    if training_args.use_wandb:
+    wandb.finish()
+    
     trainer.save_state()
 
     safe_save_model_for_hf_trainer(trainer=trainer, output_dir=training_args.output_dir)
