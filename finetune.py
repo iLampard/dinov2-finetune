@@ -293,7 +293,7 @@ def train():
         trainer.train()
 
     if training_args.use_wandb:
-    wandb.finish()
+        wandb.finish()
     
     trainer.save_state()
 

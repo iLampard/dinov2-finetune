@@ -39,14 +39,12 @@ def save_images(images, labels, output_dir):
 def test_vtab_dataset():
     # Assuming you have a VTAB dataset in the following path
     # Expand the ~ in the path and convert to absolute path
-    data_dir = Path(os.path.expanduser("~/Downloads/vtab-1k/caltech101/train800.txt")).resolve()
+    data_dir = os.path.expanduser("~/Downloads/vtab/caltech101/train800.txt")
+    model_dir = os.path.expanduser('~/Downloads/dinov2-small')
 
-    image_processor = AutoImageProcessor.from_pretrained(
-        '~/Downloads/dinov2-finetune/dinov2-base')
+    image_processor = AutoImageProcessor.from_pretrained(model_dir)
 
-    print(f"Looking for data file at: {data_dir}")  # Add this line for debugging
-
-    if not data_dir.exists():
+    if not Path(data_dir).exists():
         raise FileNotFoundError(f"Data file not found: {data_dir}")
 
     ds_vtab = create_dataset(image_processor, 'vtab', data_dir=data_dir, split='train')
