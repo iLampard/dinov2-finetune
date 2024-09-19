@@ -1,0 +1,54 @@
+# Model arguments
+model:
+  name_or_path: "facebook/dinov2-base"
+  image_size: 224
+
+# Data arguments
+data:
+  task: "caltech101"  # or any other VTAB task
+  train_data_dir: "path/to/train/data"
+  eval_data_dir: "path/to/eval/data"
+  max_train_samples: 10000  # Set to null to use all samples
+  max_eval_samples: 1000    # Set to null to use all samples
+
+# Training arguments
+training:
+  output_dir: "./output"
+  num_train_epochs: 1
+  per_device_train_batch_size: 32
+  per_device_eval_batch_size: 64
+  learning_rate: 5e-5
+  weight_decay: 0.01
+  logging_dir: "./logs"
+  logging_steps: 10
+  evaluation_strategy: "steps"
+  eval_steps: 500
+  save_steps: 1000
+  warmup_steps: 500
+  fp16: true  # Set to false if not using mixed precision training
+
+# LoRA arguments
+lora:
+  use_lora: true
+  lora_rank: 16
+  lora_alpha: 32
+  lora_dropout: 0.1
+  q_lora: false  # Set to true if using quantized LoRA
+
+# Wandb arguments
+wandb:
+  use_wandb: true
+  project: "dinov2-finetune"
+  entity: "your_wandb_entity"
+  run_name: "dinov2-finetune-run-1"
+
+# Distributed training arguments
+distributed:
+  use_distributed: true
+  world_size: 4  # Total number of processes for distributed training
+  gpu_ids: "0,1,2,3"  # Comma-separated list of GPU IDs to use
+  local_rank: -1  # Will be set automatically by torch.distributed.launch
+  master_addr: "localhost"
+  master_port: "12355"
+  deepspeed_config: "ds_config_zero2.json"
+  sharded_ddp: ""  # Options: "", "simple", "zero_dp_2", "zero_dp_3"

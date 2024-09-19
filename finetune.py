@@ -1,18 +1,20 @@
 from transformers import AutoImageProcessor, AutoModelForImageClassification, HfArgumentParser, Trainer
 from sklearn.metrics import accuracy_score
 import numpy as np
-from arguments import ModelArguments, DataArguments, TrainingArguments, LoraArguments
+from arguments import ModelArguments, DataArguments, TrainingArguments, LoraArguments, DistributedArguments
 import torch
+from torch.nn.parallel import DistributedDataParallel as DDP
 import os
-from peft import LoraConfig, get_peft_model, PeftModel, prepare_model_for_kbit_training 
+import argparse
+from peft import LoraConfig, get_peft_model, PeftModel, prepare_model_for_kbit_training
 import deepspeed
 from pathlib import Path
 import wandb
+from omegaconf import OmegaConf
 from transformers.integrations import WandbCallback
 from utils.log_utils import default_logger as logger
 from utils.dataset_utils import create_dataset
 from dataset.vtab_dataset import VTAB_NUM_CLASSES, collate_fn
-
 
 
 def maybe_zero_3(param, ignore_status=False, name=None):
@@ -75,16 +77,16 @@ def safe_save_model_for_hf_trainer(trainer: Trainer, output_dir: str):
 def get_last_checkpoint(checkpoint_dir, prefix):
     if not Path(checkpoint_dir).is_dir():
         return None
-    
+
     if Path(checkpoint_dir, 'completed').exists():
         return None  # already finished
-    
-    checkpoints = [d for d in Path(checkpoint_dir).iterdir() 
+
+    checkpoints = [d for d in Path(checkpoint_dir).iterdir()
                    if d.is_dir() and d.name.startswith(prefix)]
-    
+
     if not checkpoints:
         return None
-    
+
     return max(checkpoints, key=lambda d: int(d.name.split('-')[-1]))
 
 
@@ -190,6 +192,7 @@ def build_model(model_args, training_args, data_args, lora_args, checkpoint_dir)
 
     return model
 
+
 # Helper functions to keep the main function clean
 def get_quantization_config(training_args, lora_args):
     if lora_args.q_lora and training_args.bits in [4, 8]:
@@ -205,14 +208,23 @@ def get_quantization_config(training_args, lora_args):
         )
     return None
 
+
 def get_compute_dtype(training_args):
     return torch.bfloat16 if training_args.bf16 else torch.float32
 
-def train():
-    parser = HfArgumentParser(
-        (ModelArguments, DataArguments, TrainingArguments, LoraArguments)
-    )
-    model_args, data_args, training_args, lora_args = parser.parse_args_into_dataclasses()
+
+def train(model_args, data_args, training_args, lora_args, distributed_args):
+    # Set up distributed training
+    if distributed_args.use_distributed:
+        if distributed_args.local_rank != -1:
+            torch.cuda.set_device(distributed_args.local_rank)
+            torch.distributed.init_process_group(backend='nccl', world_size=distributed_args.world_size)
+
+    # Update TrainingArguments with distributed training args
+    training_args.local_rank = distributed_args.local_rank
+    training_args.world_size = distributed_args.world_size
+    training_args.deepspeed = distributed_args.deepspeed_config
+    training_args.sharded_ddp = distributed_args.sharded_ddp
 
     if training_args.use_wandb:
         wandb.init(
@@ -294,11 +306,30 @@ def train():
 
     if training_args.use_wandb:
         wandb.finish()
-    
+
     trainer.save_state()
 
     safe_save_model_for_hf_trainer(trainer=trainer, output_dir=training_args.output_dir)
 
 
 if __name__ == "__main__":
-    train()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config', type=str, required=True, help='Path to the config file')
+    args, _ = parser.parse_known_args()
+
+    config = OmegaConf.load(args.config)
+
+    parser = HfArgumentParser((ModelArguments, DataArguments, TrainingArguments, LoraArguments, DistributedArguments))
+    model_args, data_args, training_args, lora_args, distributed_args = parser.parse_dict(config)
+
+    # Update local_rank from command line argument
+    distributed_args.local_rank = int(os.environ.get('LOCAL_RANK', -1))
+
+    # Set environment variables for distributed training
+    if distributed_args.use_distributed:
+        os.environ['MASTER_ADDR'] = distributed_args.master_addr
+        os.environ['MASTER_PORT'] = distributed_args.master_port
+        os.environ['WORLD_SIZE'] = str(distributed_args.world_size)
+        os.environ['LOCAL_RANK'] = str(distributed_args.local_rank)
+
+    train(model_args, data_args, training_args, lora_args, distributed_args)

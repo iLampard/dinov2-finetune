@@ -109,3 +109,50 @@ class LoraArguments:
     target_modules: Optional[str] = field(default="query,value,key")
     init_lora_weights: Literal[True, "pissa"] = field(default=True,
                                                       metadata={"help": ("True -> LoRA; `pissa` -> PiSSA"), })
+    
+@dataclass
+class DistributedArguments:
+    use_distributed: bool = field(
+        default=False,
+        metadata={"help": "Whether to use distributed training"}
+    )
+    gpu_ids: str = field(
+        default="0",
+        metadata={"help": "Comma-separated list of GPU IDs to use for distributed training"}
+    )
+    local_rank: int = field(
+        default=-1,
+        metadata={"help": "Local rank for distributed training"}
+    )
+    master_addr: str = field(
+        default="localhost",
+        metadata={"help": "Master node address for distributed training"}
+    )
+    master_port: str = field(
+        default="12355",
+        metadata={"help": "Master node port for distributed training"}
+    )
+    deepspeed_config: Optional[str] = field(
+        default=None,
+        metadata={"help": "Path to DeepSpeed configuration file"}
+    )
+    fp16: bool = field(
+        default=False,
+        metadata={"help": "Whether to use mixed precision training"}
+    )
+    bf16: bool = field(
+        default=False,
+        metadata={"help": "Whether to use bfloat16 mixed precision training"}
+    )
+    sharded_ddp: str = field(
+        default="",
+        metadata={"help": "Options for sharded DDP: '', 'simple', 'zero_dp_2', 'zero_dp_3'"}
+    )
+    gradient_checkpointing: bool = field(
+        default=False,
+        metadata={"help": "Whether to use gradient checkpointing to save memory"}
+    )
+
+    @property
+    def world_size(self) -> int:
+        return len(self.gpu_ids.split(',')) if self.use_distributed else 1
