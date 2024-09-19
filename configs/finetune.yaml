@@ -38,9 +38,10 @@ lora:
 # Wandb arguments
 wandb:
   use_wandb: true
-  project: "dinov2-finetune"
-  entity: "your_wandb_entity"
-  run_name: "dinov2-finetune-run-1"
+  wandb_project: "dinov2"
+  wandb_token: "your_wandb_token"
+  wandb_entity: "your_wandb_entity"
+  wandb_run_name: "dinov2-finetune-run-1"
 
 # Distributed training arguments
 distributed:

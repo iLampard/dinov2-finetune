@@ -227,6 +227,11 @@ def train(model_args, data_args, training_args, lora_args, distributed_args):
     training_args.sharded_ddp = distributed_args.sharded_ddp
 
     if training_args.use_wandb:
+        # Programmatic login to wandb
+        if 'WANDB_API_KEY' in os.environ:
+            wandb.login(key=os.environ['WANDB_API_KEY'])
+        else:
+            wandb.login(key=training_args.wandb_token)
         wandb.init(
             project=training_args.wandb_project,
             entity=training_args.wandb_entity,
@@ -269,7 +274,7 @@ def train(model_args, data_args, training_args, lora_args, distributed_args):
         num_train_epochs=training_args.num_train_epochs,
         logging_steps=training_args.logging_steps,
         load_best_model_at_end=training_args.load_best_model_at_end,
-        metric_for_best_model="accuracy",
+        metric_for_best_model=training_args.metric_for_best_model,
         # push_to_hub=True,
         label_names=["labels"],
     )

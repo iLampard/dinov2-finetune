@@ -29,6 +29,15 @@ class DataArguments:
         metadata={"help": "Path to the test data."}
     )
 
+    max_train_samples: Optional[int] = field(
+        default=None,
+        metadata={"help": "Maximum number of training samples"}
+    )
+    max_eval_samples: Optional[int] = field(
+        default=None,
+        metadata={"help": "Maximum number of evaluation samples"}
+    )
+
     def __post_init__(self):
         if (self.train_data_dir is None and self.eval_data_dir is None):
             raise ValueError(
@@ -64,8 +73,8 @@ class TrainingArguments(transformers.TrainingArguments):
     per_device_eval_batch_size: int = field(default=4, metadata={"help": "batch size for eval data."}, )
     per_device_test_batch_size: int = field(default=4, metadata={"help": "batch size for test data."}, )
 
-    # metric_for_best_model: str = field(default='accuracy')
-    # load_best_model_at_end: bool = field(default='True')
+    metric_for_best_model: str = field(default='accuracy')
+    load_best_model_at_end: bool = field(default='True')
     eval_strategy: Literal['no', 'steps', 'epoch'] = field(default='no')
     save_strategy: Literal['no', 'steps', 'epoch'] = field(default='epoch')
     do_eval: bool = field(default=False)
@@ -85,10 +94,11 @@ class TrainingArguments(transformers.TrainingArguments):
     use_lora: bool = False
 
     use_wandb: bool = field(default=False, metadata={"help": "Whether to use Weights and Biases for logging"})
+    wandb_token: Optional[str] = field(default="xxx", metadata={"help": "The api token fo W&B to log to"})
     wandb_project: Optional[str] = field(default=None, metadata={"help": "The name of the W&B project to log to"})
     wandb_entity: Optional[str] = field(default=None, metadata={"help": "The entity (team) of the W&B project"})
     wandb_run_name: Optional[str] = field(default=None, metadata={"help": "The name of the W&B run"})
-
+ 
     def __post_init__(self):
         super().__post_init__()
         self.remove_unused_columns = False
@@ -136,21 +146,9 @@ class DistributedArguments:
         default=None,
         metadata={"help": "Path to DeepSpeed configuration file"}
     )
-    fp16: bool = field(
-        default=False,
-        metadata={"help": "Whether to use mixed precision training"}
-    )
-    bf16: bool = field(
-        default=False,
-        metadata={"help": "Whether to use bfloat16 mixed precision training"}
-    )
     sharded_ddp: str = field(
         default="",
         metadata={"help": "Options for sharded DDP: '', 'simple', 'zero_dp_2', 'zero_dp_3'"}
-    )
-    gradient_checkpointing: bool = field(
-        default=False,
-        metadata={"help": "Whether to use gradient checkpointing to save memory"}
     )
 
     @property
