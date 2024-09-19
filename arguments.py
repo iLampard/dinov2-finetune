@@ -130,7 +130,7 @@ class DistributedArguments:
         default="0",
         metadata={"help": "Comma-separated list of GPU IDs to use for distributed training"}
     )
-    local_rank: int = field(
+    distributed_local_rank: int = field(
         default=-1,
         metadata={"help": "Local rank for distributed training"}
     )

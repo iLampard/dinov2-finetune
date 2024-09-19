@@ -19,7 +19,6 @@ training:
   per_device_eval_batch_size: 64
   learning_rate: 5e-5
   weight_decay: 0.01
-  logging_dir: "./logs"
   logging_steps: 10
   evaluation_strategy: "steps"
   eval_steps: 500
@@ -48,7 +47,7 @@ distributed:
   use_distributed: true
   world_size: 4  # Total number of processes for distributed training
   gpu_ids: "0,1,2,3"  # Comma-separated list of GPU IDs to use
-  local_rank: -1  # Will be set automatically by torch.distributed.launch
+  distributed_local_rank: -1  # Will be set automatically by torch.distributed.launch
   master_addr: "localhost"
   master_port: "12355"
   deepspeed_config: "ds_config_zero2.json"

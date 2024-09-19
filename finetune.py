@@ -328,13 +328,13 @@ if __name__ == "__main__":
     model_args, data_args, training_args, lora_args, distributed_args = parser.parse_dict(config)
 
     # Update local_rank from command line argument
-    distributed_args.local_rank = int(os.environ.get('LOCAL_RANK', -1))
+    distributed_args.distributed_local_rank = int(os.environ.get('LOCAL_RANK', -1))
 
     # Set environment variables for distributed training
     if distributed_args.use_distributed:
         os.environ['MASTER_ADDR'] = distributed_args.master_addr
         os.environ['MASTER_PORT'] = distributed_args.master_port
         os.environ['WORLD_SIZE'] = str(distributed_args.world_size)
-        os.environ['LOCAL_RANK'] = str(distributed_args.local_rank)
+        os.environ['LOCAL_RANK'] = str(distributed_args.distributed_local_rank)
 
     train(model_args, data_args, training_args, lora_args, distributed_args)
