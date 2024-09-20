@@ -1,11 +1,11 @@
 # Model arguments
 model:
-  name_or_path: "facebook/dinov2-base"
-  image_size: 224
+  model_name_or_path: "facebook/dinov2-base"
 
 # Data arguments
 data:
-  task: "caltech101"  # or any other VTAB task
+  dataset_name: "vtab"
+  subset_name: "caltech101"  # or any other VTAB task
   train_data_dir: "path/to/train/data"
   eval_data_dir: "path/to/eval/data"
   max_train_samples: 10000  # Set to null to use all samples
@@ -20,15 +20,16 @@ training:
   learning_rate: 5e-5
   weight_decay: 0.01
   logging_steps: 10
-  evaluation_strategy: "steps"
+  eval_strategy: "steps"
+  save_strategy: "steps"
   eval_steps: 500
   save_steps: 1000
   warmup_steps: 500
   fp16: true  # Set to false if not using mixed precision training
+  use_lora: true
 
 # LoRA arguments
 lora:
-  use_lora: true
   lora_rank: 16
   lora_alpha: 32
   lora_dropout: 0.1

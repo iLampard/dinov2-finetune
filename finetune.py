@@ -216,8 +216,8 @@ def get_compute_dtype(training_args):
 def train(model_args, data_args, training_args, lora_args, distributed_args):
     # Set up distributed training
     if distributed_args.use_distributed:
-        if distributed_args.local_rank != -1:
-            torch.cuda.set_device(distributed_args.local_rank)
+        if distributed_args.distributed_local_rank != -1:
+            torch.cuda.set_device(distributed_args.distributed_local_rank)
             torch.distributed.init_process_group(backend='nccl', world_size=distributed_args.world_size)
 
     # Update TrainingArguments with distributed training args
@@ -263,7 +263,7 @@ def train(model_args, data_args, training_args, lora_args, distributed_args):
     args = TrainingArguments(
         model_args.model_name_or_path,
         remove_unused_columns=False,
-        evaluation_strategy=training_args.evaluation_strategy,
+        eval_strategy=training_args.eval_strategy,
         save_strategy=training_args.save_strategy,
         learning_rate=training_args.learning_rate,
         per_device_train_batch_size=training_args.per_device_train_batch_size,
