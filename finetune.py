@@ -1,4 +1,4 @@
-from transformers import AutoImageProcessor, AutoModelForImageClassification, HfArgumentParser, Trainer
+from transformers import AutoImageProcessor, AutoModelForImageClassification, HfArgumentParser, Trainer, TrainerCallback
 from sklearn.metrics import accuracy_score
 import numpy as np
 from arguments import ModelArguments, DataArguments, TrainingArguments, LoraArguments, DistributedArguments
@@ -213,19 +213,13 @@ def get_compute_dtype(training_args):
     return torch.bfloat16 if training_args.bf16 else torch.float32
 
 
-def train(model_args, data_args, training_args, lora_args, distributed_args):
-    # Set up distributed training
-    if distributed_args.use_distributed:
-        if distributed_args.distributed_local_rank != -1:
-            torch.cuda.set_device(distributed_args.distributed_local_rank)
-            torch.distributed.init_process_group(backend='nccl', world_size=distributed_args.world_size)
+class CustomWandbCallback(TrainerCallback):
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        if state.is_world_process_zero and logs is not None:
+            wandb.log(logs, step=state.global_step)
 
-    # Update TrainingArguments with distributed training args
-    training_args.local_rank = distributed_args.local_rank
-    training_args.world_size = distributed_args.world_size
-    training_args.deepspeed = distributed_args.deepspeed_config
-    training_args.sharded_ddp = distributed_args.sharded_ddp
 
+def train(model_args, data_args, training_args, lora_args):
     if training_args.use_wandb:
         # Programmatic login to wandb
         if 'WANDB_API_KEY' in os.environ:
@@ -287,7 +281,7 @@ def train(model_args, data_args, training_args, lora_args, distributed_args):
 
     callbacks = []
     if training_args.use_wandb:
-        callbacks.append(WandbCallback())
+        callbacks.append(CustomWandbCallback())
 
     trainer = Trainer(model,
                       args=args,
@@ -324,8 +318,16 @@ if __name__ == "__main__":
 
     config = OmegaConf.load(args.config)
 
-    parser = HfArgumentParser((ModelArguments, DataArguments, TrainingArguments, LoraArguments, DistributedArguments))
-    model_args, data_args, training_args, lora_args, distributed_args = parser.parse_dict(config)
+    hf_parser = HfArgumentParser(
+        (ModelArguments, DataArguments, TrainingArguments, LoraArguments, DistributedArguments))
+    model_args, data_args, training_args, lora_args, distributed_args = hf_parser.parse_dict({
+        **config['model'],
+        **config['data'],
+        **config['training'],
+        **config['lora'],
+        **config['wandb'],
+        **config['distributed']
+    })
 
     # Update local_rank from command line argument
     distributed_args.distributed_local_rank = int(os.environ.get('LOCAL_RANK', -1))
@@ -337,4 +339,6 @@ if __name__ == "__main__":
         os.environ['WORLD_SIZE'] = str(distributed_args.world_size)
         os.environ['LOCAL_RANK'] = str(distributed_args.distributed_local_rank)
 
-    train(model_args, data_args, training_args, lora_args, distributed_args)
+    # train(model_args, data_args, training_args, lora_args)
+
+

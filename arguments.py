@@ -150,10 +150,6 @@ class DistributedArguments:
         default="",
         metadata={"help": "Options for sharded DDP: '', 'simple', 'zero_dp_2', 'zero_dp_3'"}
     )
-    world_size: int = field(
-        default=1,
-        metadata={"help": "Total number of processes for distributed training"}
-    )
     @property
     def world_size(self) -> int:
         return len(self.gpu_ids.split(',')) if self.use_distributed else 1

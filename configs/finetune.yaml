@@ -1,13 +1,13 @@
 # Model arguments
 model:
-  model_name_or_path: "facebook/dinov2-base"
+  model_name_or_path: "/workspaces/data0/models/huggingface/facebook/dinov2-base/"
 
 # Data arguments
 data:
   dataset_name: "vtab"
   subset_name: "caltech101"  # or any other VTAB task
-  train_data_dir: "path/to/train/data"
-  eval_data_dir: "path/to/eval/data"
+  train_data_dir: "/workspaces/data0/cache/huggingface/hub/datasets--vtab/caltech101/train800.txt"
+  eval_data_dir: "/workspaces/data0/cache/huggingface/hub/datasets--vtab/caltech101/val200.txt"
   max_train_samples: 10000  # Set to null to use all samples
   max_eval_samples: 1000    # Set to null to use all samples
 
@@ -46,7 +46,6 @@ wandb:
 # Distributed training arguments
 distributed:
   use_distributed: true
-  world_size: 4  # Total number of processes for distributed training
   gpu_ids: "0,1,2,3"  # Comma-separated list of GPU IDs to use
   distributed_local_rank: -1  # Will be set automatically by torch.distributed.launch
   master_addr: "localhost"
